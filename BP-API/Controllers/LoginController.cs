@@ -1,40 +1,239 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿//using System;
+//using System.Configuration;
+//using System.Net;
+//using System.Net.Http;
+//using System.Web.Http;
+//using BP_API.Models;
+//using Oracle.ManagedDataAccess.Client;
+
+//namespace BP_API.Controllers
+//{
+//    public class LoginController : ApiController
+//    {
+//        private string _connectionString = ConfigurationManager.AppSettings["connection"];
+
+//        [HttpPost]
+//        [Route("api/login")]
+//        public HttpResponseMessage Login([FromBody] LoginRequest loginRequest)
+//        {
+//            try
+//            {
+//                if (loginRequest == null)
+//                {
+//                    return Request.CreateResponse(HttpStatusCode.BadRequest, "Invalid request body");
+//                }
+
+//                Console.WriteLine($"Received login request for username: {loginRequest.Username}");
+
+//                UserCheckResult userResult = new UserCheckResult();
+
+//                // ✅ Check Borrower (no password required)
+//                userResult = CheckUser("TBL_BRRWR_CNTCT_PRSN", "BCP_EML_V", "BCP_EML_V", "BCP_BRRWR_CD_V", loginRequest);
+//                if (userResult.IsValid)
+//                {
+//                    Console.WriteLine("Borrower login successful");
+//                    return Request.CreateResponse(HttpStatusCode.OK, new { role = "Borrower", borrowerCode = userResult.Code });
+//                }
+
+//                // ✅ Check Trustee (password required)
+//                userResult = CheckUser("TBL_TRST_CNTCT_PRSN", "TCP_EML_V", "TCP_PSSWRD_V", "TCP_TRST_CD_C", loginRequest);
+//                if (userResult.IsValid)
+//                {
+//                    Console.WriteLine("Trustee login successful");
+//                    return Request.CreateResponse(HttpStatusCode.OK, new { role = "Trustee", trusteeCode = userResult.Code });
+//                }
+
+//                // ✅ Check PME (password required)
+//                userResult = CheckUser("TBL_PME_CNTCT_PRSN", "PCP_EML_V", "PCP_PSSWRD_V", "PCP_PME_CD_C", loginRequest);
+//                if (userResult.IsValid)
+//                {
+//                    Console.WriteLine("PME login successful");
+//                    return Request.CreateResponse(HttpStatusCode.OK, new { role = "PME", pmeCode = userResult.Code });
+//                }
+
+//                // ✅ Check Arbour (no password required)
+//                userResult = CheckUser("TB_USR_MSTR", "USR_NM_V", "USR_NM_V", null, loginRequest);
+//                if (userResult.IsValid)
+//                {
+//                    Console.WriteLine("Arbour login successful");
+//                    return Request.CreateResponse(HttpStatusCode.OK, new { role = "Arbour" });
+//                }
+
+//                // ❌ If no match found, return Unauthorized
+//                Console.WriteLine("Invalid credentials");
+//                return Request.CreateResponse(HttpStatusCode.Unauthorized, new { message = "Invalid credentials" });
+//            }
+//            catch (Exception ex)
+//            {
+//                Console.WriteLine($"Login error: {ex.Message}");
+//                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { message = "Login failed", error = ex.Message });
+//            }
+//        }
+
+
+//        private UserCheckResult CheckUser(string tableName, string usernameColumn, string passwordColumn, string codeColumn, LoginRequest request)
+//        {
+//            var result = new UserCheckResult { IsValid = false, Code = null };
+
+//            try
+//            {
+//                string query = $"SELECT {codeColumn} FROM {tableName} WHERE {usernameColumn} = :username AND {passwordColumn} = :password";
+
+//                using (OracleConnection connection = new OracleConnection(_connectionString))
+//                using (OracleCommand command = new OracleCommand(query, connection))
+//                {
+//                    command.Parameters.Add(new OracleParameter(":username", OracleDbType.Varchar2)).Value = request.Username;
+//                    command.Parameters.Add(new OracleParameter(":password", OracleDbType.Varchar2)).Value = request.Password;
+
+//                    connection.Open();
+//                    object resultValue = command.ExecuteScalar();
+//                    connection.Close();
+
+//                    Console.WriteLine($"🔍 Query Result from {tableName}: {resultValue}");
+
+//                    if (resultValue != null)
+//                    {
+//                        result.IsValid = true;
+//                        result.Code = resultValue.ToString();
+//                    }
+//                }
+//            }
+//            catch (OracleException orex)
+//            {
+//                Console.WriteLine($"🔥 Oracle Error in {tableName}: {orex.Message}");
+//            }
+//            catch (Exception ex)
+//            {
+//                Console.WriteLine($"❌ General Error in {tableName}: {ex.Message}");
+//            }
+
+//            return result;
+//        }
+
+//        private HttpResponseMessage CreateSuccessResponse(string role, string code)
+//        {
+//            var responseData = new
+//            {
+//                role,
+//                message = "Login successful",
+//                code = code
+//            };
+
+//            return Request.CreateResponse(HttpStatusCode.OK, responseData);
+//        }
+//    }
+//}
+
+using System;
+using System.Configuration;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using BP_API.Models;
+using Oracle.ManagedDataAccess.Client;
 
 namespace BP_API.Controllers
 {
     public class LoginController : ApiController
     {
-        private Dictionary<string, string> users = new Dictionary<string, string>()
-        {
-            { "borrower1", "b123" },
-            { "borrower2", "b234" },
-            { "arbour", "a123" },
-            { "pme",  "p123" },
-            { "trustee", "t123" }
-        };
+        private string _connectionString = ConfigurationManager.AppSettings["connection"];
 
         [HttpPost]
         [Route("api/login")]
-        public HttpResponseMessage Login([FromBody] Models.LoginRequest loginRequest)
+        public HttpResponseMessage Login([FromBody] LoginRequest loginRequest)
         {
-            if (loginRequest == null)
+            try
             {
-                return Request.CreateResponse(HttpStatusCode.BadRequest, "Invalid request body");
-            }
+                if (loginRequest == null)
+                {
+                    return Request.CreateResponse(HttpStatusCode.BadRequest, "Invalid request body");
+                }
 
-            if (users.ContainsKey(loginRequest.Username) && users[loginRequest.Username] == loginRequest.Password)
-            {
-                return Request.CreateResponse(HttpStatusCode.OK, new { message = "Login successful" });
-            }
-            else
-            {
+                Console.WriteLine($"Received login request for username: {loginRequest.Username}");
+
+                UserCheckResult userResult = new UserCheckResult();
+
+                // ✅ Check Borrower (no password required)
+                userResult = CheckUser("TBL_BRRWR_CNTCT_PRSN", "BCP_EML_V", "BCP_EML_V", "BCP_BRRWR_CD_V", loginRequest);
+                if (userResult.IsValid)
+                {
+                    return CreateSuccessResponse("Borrower", userResult.Code);
+                }
+
+                // ✅ Check Trustee (password required)
+                userResult = CheckUser("TBL_TRST_CNTCT_PRSN", "TCP_EML_V", "TCP_PSSWRD_V", "TCP_TRST_CD_C", loginRequest);
+                if (userResult.IsValid)
+                {
+                    return CreateSuccessResponse("Trustee", userResult.Code);
+                }
+
+                // ✅ Check PME (password required)
+                userResult = CheckUser("TBL_PME_CNTCT_PRSN", "PCP_EML_V", "PCP_PSSWRD_V", "PCP_PME_CD_C", loginRequest);
+                if (userResult.IsValid)
+                {
+                    return CreateSuccessResponse("PME", userResult.Code);
+                }
+
+                // ✅ Check Arbour (password required)
+                userResult = CheckUser("TB_USR_MSTR", "USR_NM_V", "USR_NM_V", null, loginRequest);
+                if (userResult.IsValid)
+                {
+                    return Request.CreateResponse(HttpStatusCode.OK, new { role = "Arbour" });
+                }
+
+                // ❌ If no match found, return Unauthorized
                 return Request.CreateResponse(HttpStatusCode.Unauthorized, new { message = "Invalid credentials" });
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Login error: {ex.Message}");
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { message = "Login failed", error = ex.Message });
+            }
+        }
+
+        private UserCheckResult CheckUser(string tableName, string usernameColumn, string passwordColumn, string codeColumn, LoginRequest request)
+        {
+            var result = new UserCheckResult { IsValid = false, Code = null };
+
+            try
+            {
+                string query = codeColumn != null
+                    ? $"SELECT {codeColumn} FROM {tableName} WHERE {usernameColumn} = :username AND {passwordColumn} = :password"
+                    : $"SELECT COUNT(*) FROM {tableName} WHERE {usernameColumn} = :username AND {passwordColumn} = :password";
+
+                using (OracleConnection connection = new OracleConnection(_connectionString))
+                using (OracleCommand command = new OracleCommand(query, connection))
+                {
+                    command.Parameters.Add(new OracleParameter(":username", OracleDbType.Varchar2)).Value = request.Username;
+                    command.Parameters.Add(new OracleParameter(":password", OracleDbType.Varchar2)).Value = request.Password;
+
+                    connection.Open();
+                    object resultValue = command.ExecuteScalar();
+                    connection.Close();
+
+                    if (resultValue != null && (codeColumn != null || Convert.ToInt32(resultValue) > 0))
+                    {
+                        result.IsValid = true;
+                        result.Code = codeColumn != null ? resultValue.ToString() : null;
+                    }
+                }
+            }
+            catch (OracleException orex)
+            {
+                Console.WriteLine($"🔥 Oracle Error in {tableName}: {orex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ General Error in {tableName}: {ex.Message}");
+            }
+
+            return result;
+        }
+
+        private HttpResponseMessage CreateSuccessResponse(string role, string code)
+        {
+            var responseData = new { role, message = "Login successful", code = code };
+            return Request.CreateResponse(HttpStatusCode.OK, responseData);
         }
     }
 }

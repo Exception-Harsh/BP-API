@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Net.Http.Headers;
 using System.Web.Http;
 using System.Web.Http.Cors;
 
@@ -10,13 +8,14 @@ namespace BP_API
     {
         public static void Register(HttpConfiguration config)
         {
-            // Web API configuration and services
+            // Enable CORS for your API
+            var cors = new EnableCorsAttribute("http://localhost:5173", "*", "*");
+            config.EnableCors(cors);
 
             // Web API routes
             config.MapHttpAttributeRoutes();
-            var cors = new EnableCorsAttribute("*", "*", "*"); // Allow all origins, headers, and methods (VERY permissive)
-            config.EnableCors(cors);
 
+            config.Formatters.JsonFormatter.SupportedMediaTypes.Add(new MediaTypeHeaderValue("application/json"));
 
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",
