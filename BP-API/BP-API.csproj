@@ -108,12 +108,14 @@
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AssetSalesController.cs" />
+    <Compile Include="Controllers\DisbursementDataController.cs" />
     <Compile Include="Controllers\LoginController.cs" />
     <Compile Include="Controllers\ProjectController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\AssetSale.cs" />
+    <Compile Include="Models\DisbursementRequestDto.cs" />
     <Compile Include="Models\LoginRequest.cs" />
     <Compile Include="Models\newAssetSale.cs" />
     <Compile Include="Models\Project.cs" />

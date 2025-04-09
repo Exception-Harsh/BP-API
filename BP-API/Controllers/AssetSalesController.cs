@@ -15,106 +15,119 @@ namespace BP_API.Controllers
         private string _connectionString = ConfigurationManager.AppSettings["connection"];
 
         [HttpGet]
-        [Route("api/assetsales/nextyearmonth/{projectNumber}")]
-        public HttpResponseMessage GetNextYearMonth(string projectNumber)
+        [Route("api/assetsales/nextyearmonth/{projectNumber}/{role}")]
+        public HttpResponseMessage GetNextYearMonth(string projectNumber, string role)
         {
             try
             {
-                // Step 1: Retrieve the maximum YearMonth from the database
-                string maxYearMonthQuery = @"
-            SELECT MAX(ASMH_YR_MNTH_N) AS MaxYearMonth
-            FROM TBL_ASST_SLS_MS_HDR
-            WHERE ASMH_PRJCT_NMBR_N = :projectNumber";
+                string maxAsmYearMonth = null;
+                string maxAsmawYearMonth = null;
 
-                string maxYearMonth;
                 using (OracleConnection connection = new OracleConnection(_connectionString))
                 {
                     connection.Open();
-                    using (OracleCommand command = new OracleCommand(maxYearMonthQuery, connection))
+
+                    // Get max ASM_YR_MNTH_N
+                    using (OracleCommand cmd1 = new OracleCommand(@"
+                SELECT MAX(ASM_YR_MNTH_N) FROM TBL_ASST_SLS_MS
+                WHERE ASM_PRJCT_NMBR_N = :projectNumber", connection))
                     {
-                        command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
-                        maxYearMonth = command.ExecuteScalar()?.ToString(); // Get the max YearMonth
+                        cmd1.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        maxAsmYearMonth = cmd1.ExecuteScalar()?.ToString();
+                        Console.WriteLine($"DEBUG: maxAsmYearMonth = {maxAsmYearMonth}");
                     }
-                }
 
-                if (string.IsNullOrEmpty(maxYearMonth) || maxYearMonth.Length != 6)
-                {
-                    return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Invalid YearMonth format in the database." });
-                }
-
-                // Check if the maxYearMonth is already 202501
-                if (maxYearMonth == "202501")
-                {
-                    return Request.CreateResponse(HttpStatusCode.OK, new { nextYearMonth = maxYearMonth, message = "YearMonth is already 202501. No new rows inserted." });
-                }
-
-                int year = int.Parse(maxYearMonth.Substring(0, 4)); // Extract year (first 4 digits)
-                int month = int.Parse(maxYearMonth.Substring(4, 2)); // Extract month (last 2 digits)
-
-                // Calculate the next month
-                if (month == 12)
-                {
-                    year++; // Increment year if December
-                    month = 1; // Set month to January
-                }
-                else
-                {
-                    month++; // Increment month
-                }
-
-                // Format the next YearMonth as "yyyyMM"
-                string nextYearMonth = $"{year}{month:D2}"; // Ensure month is 2 digits
-
-                // Step 2: Insert new rows with the updated YearMonth
-                string insertQuery = @"
-            INSERT INTO TBL_ASST_SLS_MS (
-                ASM_YR_MNTH_N, ASM_PRJCT_NMBR_N, ASM_ASST_NMBR_N, ASM_PHS_V, ASM_BLDNG_V, ASM_FLR_V, ASM_UNT_NMBR_V,
-                ASM_UNT_CNFGRTN_V, ASM_UNT_TYP_C, ASM_SLBL_ARA_N, ASM_CRPT_ARA_N, ASM_CRPT_ARA_RR_N, ASM_UNT_UNQ_NMBR_N,
-                ASM_UNT_OWNR_C, ASM_UNT_SLD_FLG_C, ASM_UNT_RGSTRD_FLG_C, ASM_UNT_RGSTRTN_DT_D, ASM_UNT_BKNG_DT_D,
-                ASM_ALLTMNT_LTTR_DT_D, ASM_UNT_AGRMNT_DT_D, ASM_CSTMR_NM_V, ASM_CSTMR_KYC_AADHR_N, ASM_CSTMR_KYC_PN_V,
-                ASM_CSTMR_KYC_MBL_V, ASM_CSTMR_KYC_EML_V, ASM_CSTMR_KYC_ADDRSS_V, ASM_NC_ISSD_FLG_C, ASM_NC_NMBR_V,
-                ASM_SLS_BS_PRC_N, ASM_SLS_STMP_DTY_AMNT_N, ASM_SLS_RGSTRN_AMNT_N, ASM_SLS_OC_AMNT_N, ASM_SLS_PSS_THRGH_CHRGS_N,
-                ASM_SLS_TXS_AMNT_N, ASM_SLS_TTL_AMNT_N, ASM_DMND_BS_PRC_N, ASM_DMND_STMP_DTY_N, ASM_DMND_RGSTRTN_AMNT_N,
-                ASM_DMND_OC_AMNT_N, ASM_DMND_PSS_THRGH_CHRGS_N, ASM_DMND_TXS_AMNT_N, ASM_DMND_TTL_AMNT_N, ASM_RCVD_BS_PRC_N,
-                ASM_RCVD_STMP_DTY_AMNT_N, ASM_RCVD_RGSTRN_AMNT_N, ASM_RCVD_OC_AMNT_N, ASM_RCVD_PSS_THRGH_CHRGS_N,
-                ASM_RCVD_TXS_AMNT_N, ASM_RCVD_TTL_AMNT_N, ASM_MD_OF_FNNC_C, ASM_FI_NM_V, ASM_PYMNT_PLN_NM_V,
-                ASM_SRC_OF_CSTMR_C, ASM_CHNNL_PRTNR_NM_V, ASM_CHNNL_PRTNR_MBL_V, ASM_CHNNL_PRTNR_EML_V, ASM_BRKRG_AMNT_N
-            )
-            SELECT
-                :nextYearMonth, ASM_PRJCT_NMBR_N, ASM_ASST_NMBR_N, ASM_PHS_V, ASM_BLDNG_V, ASM_FLR_V, ASM_UNT_NMBR_V,
-                ASM_UNT_CNFGRTN_V, ASM_UNT_TYP_C, ASM_SLBL_ARA_N, ASM_CRPT_ARA_N, ASM_CRPT_ARA_RR_N, ASM_UNT_UNQ_NMBR_N,
-                ASM_UNT_OWNR_C, ASM_UNT_SLD_FLG_C, ASM_UNT_RGSTRD_FLG_C, ASM_UNT_RGSTRTN_DT_D, ASM_UNT_BKNG_DT_D,
-                ASM_ALLTMNT_LTTR_DT_D, ASM_UNT_AGRMNT_DT_D, ASM_CSTMR_NM_V, ASM_CSTMR_KYC_AADHR_N, ASM_CSTMR_KYC_PN_V,
-                ASM_CSTMR_KYC_MBL_V, ASM_CSTMR_KYC_EML_V, ASM_CSTMR_KYC_ADDRSS_V, ASM_NC_ISSD_FLG_C, ASM_NC_NMBR_V,
-                ASM_SLS_BS_PRC_N, ASM_SLS_STMP_DTY_AMNT_N, ASM_SLS_RGSTRN_AMNT_N, ASM_SLS_OC_AMNT_N, ASM_SLS_PSS_THRGH_CHRGS_N,
-                ASM_SLS_TXS_AMNT_N, ASM_SLS_TTL_AMNT_N, ASM_DMND_BS_PRC_N, ASM_DMND_STMP_DTY_N, ASM_DMND_RGSTRTN_AMNT_N,
-                ASM_DMND_OC_AMNT_N, ASM_DMND_PSS_THRGH_CHRGS_N, ASM_DMND_TXS_AMNT_N, ASM_DMND_TTL_AMNT_N, ASM_RCVD_BS_PRC_N,
-                ASM_RCVD_STMP_DTY_AMNT_N, ASM_RCVD_RGSTRN_AMNT_N, ASM_RCVD_OC_AMNT_N, ASM_RCVD_PSS_THRGH_CHRGS_N,
-                ASM_RCVD_TXS_AMNT_N, ASM_RCVD_TTL_AMNT_N, ASM_MD_OF_FNNC_C, ASM_FI_NM_V, ASM_PYMNT_PLN_NM_V,
-                ASM_SRC_OF_CSTMR_C, ASM_CHNNL_PRTNR_NM_V, ASM_CHNNL_PRTNR_MBL_V, ASM_CHNNL_PRTNR_EML_V, ASM_BRKRG_AMNT_N
-            FROM TBL_ASST_SLS_MS
-            WHERE ASM_YR_MNTH_N = :maxYearMonth
-              AND ASM_PRJCT_NMBR_N = :projectNumber";
-
-                using (OracleConnection connection = new OracleConnection(_connectionString))
-                {
-                    connection.Open();
-                    using (OracleCommand command = new OracleCommand(insertQuery, connection))
+                    // Get max ASMAW_YR_MNTH_N
+                    using (OracleCommand cmd2 = new OracleCommand(@"
+                SELECT MAX(ASMAW_YR_MNTH_N)
+                FROM TBL_ASST_SLS_MS_APPRVL_WRKFLW
+                WHERE ASMAW_PRJCT_NMBR_N = :projectNumber
+                  AND ASMAW_USR_NM_V = :username
+                  AND ASMAW_STTS_FLG_C = 'A'", connection))
                     {
-                        command.Parameters.Add(new OracleParameter("nextYearMonth", nextYearMonth));
-                        command.Parameters.Add(new OracleParameter("maxYearMonth", maxYearMonth));
-                        command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        cmd2.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        cmd2.Parameters.Add(new OracleParameter("username", "Arbour")); // or pass dynamically
+                        maxAsmawYearMonth = cmd2.ExecuteScalar()?.ToString();
+                        Console.WriteLine($"DEBUG: maxAsmawYearMonth = {maxAsmawYearMonth}");
+                    }
 
-                        int rowsInserted = command.ExecuteNonQuery();
+                    if (maxAsmYearMonth == null)
+                    {
+                        return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Missing ASM YearMonth data." });
+                    }
 
-                        if (rowsInserted == 0)
+                    if (maxAsmawYearMonth == null || maxAsmYearMonth != maxAsmawYearMonth)
+                    {
+                        return Request.CreateResponse(HttpStatusCode.OK, new { maxYearMonth = maxAsmYearMonth, message = "Approval workflow not up-to-date. No rows inserted." });
+                    }
+
+                    // If both match and role is "Borrower", proceed to insert
+                    if (role == "Borrower")
+                    {
+                        // Insert new rows with the updated YearMonth using ADD_MONTHS
+                        string insertQuery = @"
+                    INSERT INTO TBL_ASST_SLS_MS (
+                        ASM_YR_MNTH_N, ASM_PRJCT_NMBR_N, ASM_ASST_NMBR_N, ASM_PHS_V, ASM_BLDNG_V, ASM_FLR_V, ASM_UNT_NMBR_V,
+                        ASM_UNT_CNFGRTN_V, ASM_UNT_TYP_C, ASM_SLBL_ARA_N, ASM_CRPT_ARA_N, ASM_CRPT_ARA_RR_N, ASM_UNT_UNQ_NMBR_N,
+                        ASM_UNT_OWNR_C, ASM_UNT_SLD_FLG_C, ASM_UNT_RGSTRD_FLG_C, ASM_UNT_RGSTRTN_DT_D, ASM_UNT_BKNG_DT_D,
+                        ASM_ALLTMNT_LTTR_DT_D, ASM_UNT_AGRMNT_DT_D, ASM_CSTMR_NM_V, ASM_CSTMR_KYC_AADHR_N, ASM_CSTMR_KYC_PN_V,
+                        ASM_CSTMR_KYC_MBL_V, ASM_CSTMR_KYC_EML_V, ASM_CSTMR_KYC_ADDRSS_V, ASM_NC_ISSD_FLG_C, ASM_NC_NMBR_V,
+                        ASM_SLS_BS_PRC_N, ASM_SLS_STMP_DTY_AMNT_N, ASM_SLS_RGSTRN_AMNT_N, ASM_SLS_OC_AMNT_N, ASM_SLS_PSS_THRGH_CHRGS_N,
+                        ASM_SLS_TXS_AMNT_N, ASM_SLS_TTL_AMNT_N, ASM_DMND_BS_PRC_N, ASM_DMND_STMP_DTY_N, ASM_DMND_RGSTRTN_AMNT_N,
+                        ASM_DMND_OC_AMNT_N, ASM_DMND_PSS_THRGH_CHRGS_N, ASM_DMND_TXS_AMNT_N, ASM_DMND_TTL_AMNT_N, ASM_RCVD_BS_PRC_N,
+                        ASM_RCVD_STMP_DTY_AMNT_N, ASM_RCVD_RGSTRN_AMNT_N, ASM_RCVD_OC_AMNT_N, ASM_RCVD_PSS_THRGH_CHRGS_N,
+                        ASM_RCVD_TXS_AMNT_N, ASM_RCVD_TTL_AMNT_N, ASM_MD_OF_FNNC_C, ASM_FI_NM_V, ASM_PYMNT_PLN_NM_V,
+                        ASM_SRC_OF_CSTMR_C, ASM_CHNNL_PRTNR_NM_V, ASM_CHNNL_PRTNR_MBL_V, ASM_CHNNL_PRTNR_EML_V, ASM_BRKRG_AMNT_N, 
+                        COIN_CRTN_USR_ID_V, COIN_CRTN_DT_D, COIN_LST_MDFD_USR_ID_V, COIN_LST_MDFD_DT_D
+                    )
+                    SELECT
+                        TO_CHAR(ADD_MONTHS(TO_DATE(B.ASM_YR_MNTH_N || '01', 'YYYYMMDD'), 1), 'YYYYMM') AS VL_NXT_MNTH_N,
+                        A.ASM_PRJCT_NMBR_N, A.ASM_ASST_NMBR_N, A.ASM_PHS_V, A.ASM_BLDNG_V, A.ASM_FLR_V, A.ASM_UNT_NMBR_V,
+                        A.ASM_UNT_CNFGRTN_V, A.ASM_UNT_TYP_C, A.ASM_SLBL_ARA_N, A.ASM_CRPT_ARA_N, A.ASM_CRPT_ARA_RR_N, A.ASM_UNT_UNQ_NMBR_N,
+                        A.ASM_UNT_OWNR_C, A.ASM_UNT_SLD_FLG_C, A.ASM_UNT_RGSTRD_FLG_C, A.ASM_UNT_RGSTRTN_DT_D, A.ASM_UNT_BKNG_DT_D,
+                        A.ASM_ALLTMNT_LTTR_DT_D, A.ASM_UNT_AGRMNT_DT_D, A.ASM_CSTMR_NM_V, A.ASM_CSTMR_KYC_AADHR_N, A.ASM_CSTMR_KYC_PN_V,
+                        A.ASM_CSTMR_KYC_MBL_V, A.ASM_CSTMR_KYC_EML_V, A.ASM_CSTMR_KYC_ADDRSS_V, A.ASM_NC_ISSD_FLG_C, A.ASM_NC_NMBR_V,
+                        A.ASM_SLS_BS_PRC_N, A.ASM_SLS_STMP_DTY_AMNT_N, A.ASM_SLS_RGSTRN_AMNT_N, A.ASM_SLS_OC_AMNT_N, A.ASM_SLS_PSS_THRGH_CHRGS_N,
+                        A.ASM_SLS_TXS_AMNT_N, A.ASM_SLS_TTL_AMNT_N, A.ASM_DMND_BS_PRC_N, A.ASM_DMND_STMP_DTY_N, A.ASM_DMND_RGSTRTN_AMNT_N,
+                        A.ASM_DMND_OC_AMNT_N, A.ASM_DMND_PSS_THRGH_CHRGS_N, A.ASM_DMND_TXS_AMNT_N, A.ASM_DMND_TTL_AMNT_N, A.ASM_RCVD_BS_PRC_N,
+                        A.ASM_RCVD_STMP_DTY_AMNT_N, A.ASM_RCVD_RGSTRN_AMNT_N, A.ASM_RCVD_OC_AMNT_N, A.ASM_RCVD_PSS_THRGH_CHRGS_N,
+                        A.ASM_RCVD_TXS_AMNT_N, A.ASM_RCVD_TTL_AMNT_N, A.ASM_MD_OF_FNNC_C, A.ASM_FI_NM_V, A.ASM_PYMNT_PLN_NM_V,
+                        A.ASM_SRC_OF_CSTMR_C, A.ASM_CHNNL_PRTNR_NM_V, A.ASM_CHNNL_PRTNR_MBL_V, A.ASM_CHNNL_PRTNR_EML_V, A.ASM_BRKRG_AMNT_N,
+                        COIN_CRTN_USR_ID_V, COIN_CRTN_DT_D, COIN_LST_MDFD_USR_ID_V, COIN_LST_MDFD_DT_D
+                    FROM TBL_ASST_SLS_MS A
+                    INNER JOIN (
+                        SELECT ASM_PRJCT_NMBR_N, MAX(ASM_YR_MNTH_N) AS ASM_YR_MNTH_N
+                        FROM TBL_ASST_SLS_MS
+                        GROUP BY ASM_PRJCT_NMBR_N
+                    ) B ON A.ASM_PRJCT_NMBR_N = B.ASM_PRJCT_NMBR_N AND A.ASM_YR_MNTH_N = B.ASM_YR_MNTH_N
+                    WHERE A.ASM_PRJCT_NMBR_N = :projectNumber";
+
+                        using (OracleCommand command = new OracleCommand(insertQuery, connection))
                         {
-                            return Request.CreateResponse(HttpStatusCode.NotFound, new { error = "No rows were inserted." });
-                        }
-                    }
-                }
+                            command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
 
-                return Request.CreateResponse(HttpStatusCode.OK, new { nextYearMonth });
+                            int rowsInserted = command.ExecuteNonQuery();
+
+                            if (rowsInserted == 0)
+                            {
+                                return Request.CreateResponse(HttpStatusCode.NotFound, new { error = "No rows were inserted." });
+                            }
+                        }
+
+                        // Fetch the max ASM_YR_MNTH_N again after insertion
+                        using (OracleCommand cmd3 = new OracleCommand(@"
+                    SELECT MAX(ASM_YR_MNTH_N) FROM TBL_ASST_SLS_MS
+                    WHERE ASM_PRJCT_NMBR_N = :projectNumber", connection))
+                        {
+                            cmd3.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                            maxAsmYearMonth = cmd3.ExecuteScalar()?.ToString();
+                        }
+
+                        return Request.CreateResponse(HttpStatusCode.OK, new { nextYearMonth = maxAsmYearMonth });
+                    }
+
+                    return Request.CreateResponse(HttpStatusCode.OK, new { maxYearMonth = maxAsmYearMonth });
+                }
             }
             catch (Exception ex)
             {
@@ -122,6 +135,7 @@ namespace BP_API.Controllers
                 return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
             }
         }
+
 
         [HttpGet]
         [Route("api/assetsales/buildings/{projectNumber}/{yearMonth}")]
@@ -314,7 +328,7 @@ namespace BP_API.Controllers
 
 
         [HttpGet]
-        [Route("api/assetsales/filters/{projectNumber}/{yearMonth}/{buildingName}")]
+        [Route("api/assetsales/filters/{projectNumber}/{yearMonth}/{buildingName}/{uniqueUnitNumber}")]
         public HttpResponseMessage GetFiltersData(string projectNumber, string yearMonth, string buildingName)
         {
             try
