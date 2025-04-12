@@ -7,6 +7,8 @@ using Oracle.ManagedDataAccess.Client;
 using BP_API.Models;
 using System.Configuration;
 using System.Data;
+using System.Linq;
+using BP_API.Queries;
 
 namespace BP_API.Controllers
 {
@@ -327,298 +329,194 @@ namespace BP_API.Controllers
 
 
 
-        [HttpGet]
-        [Route("api/assetsales/filters/{projectNumber}/{yearMonth}/{buildingName}/{uniqueUnitNumber}")]
-        public HttpResponseMessage GetFiltersData(string projectNumber, string yearMonth, string buildingName)
-        {
-            try
-            {
-                // Fetch distinct unit numbers for the selected building
-                string fetchUnitNumbersQuery = @"
-            SELECT DISTINCT ASM_UNT_NMBR_V
-            FROM TBL_ASST_SLS_MS
-            WHERE ASM_PRJCT_NMBR_N = :projectNumber
-              AND ASM_YR_MNTH_N = :yearMonth
-              AND ASM_BLDNG_V = :buildingName";
+        //[HttpGet]
+        //[Route("api/assetsales/filters/{projectNumber}/{yearMonth}/{buildingName}")]
+        //public HttpResponseMessage GetFiltersData(string projectNumber, string yearMonth, string buildingName)
+        //{
+        //    try
+        //    {
+        //        // Fetch distinct unit numbers for the selected building
+        //        string fetchUnitNumbersQuery = @"
+        //    SELECT DISTINCT ASM_UNT_NMBR_V
+        //    FROM TBL_ASST_SLS_MS
+        //    WHERE ASM_PRJCT_NMBR_N = :projectNumber
+        //      AND ASM_YR_MNTH_N = :yearMonth
+        //      AND ASM_BLDNG_V = :buildingName";
 
-                List<string> unitNumbers = new List<string>();
-                using (OracleConnection connection = new OracleConnection(_connectionString))
-                {
-                    connection.Open();
-                    using (OracleCommand command = new OracleCommand(fetchUnitNumbersQuery, connection))
-                    {
-                        command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
-                        command.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
-                        command.Parameters.Add(new OracleParameter("buildingName", buildingName));
+        //        List<string> unitNumbers = new List<string>();
+        //        using (OracleConnection connection = new OracleConnection(_connectionString))
+        //        {
+        //            connection.Open();
+        //            using (OracleCommand command = new OracleCommand(fetchUnitNumbersQuery, connection))
+        //            {
+        //                command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+        //                command.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+        //                command.Parameters.Add(new OracleParameter("buildingName", buildingName));
 
-                        using (OracleDataReader reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                unitNumbers.Add(reader["ASM_UNT_NMBR_V"].ToString());
-                            }
-                        }
-                    }
-                }
+        //                using (OracleDataReader reader = command.ExecuteReader())
+        //                {
+        //                    while (reader.Read())
+        //                    {
+        //                        unitNumbers.Add(reader["ASM_UNT_NMBR_V"].ToString());
+        //                    }
+        //                }
+        //            }
+        //        }
 
-                // Fetch distinct unit configurations for the selected building
-                string fetchUnitConfigurationsQuery = @"
-            SELECT DISTINCT ASM_UNT_CNFGRTN_V
-            FROM TBL_ASST_SLS_MS
-            WHERE ASM_PRJCT_NMBR_N = :projectNumber
-              AND ASM_YR_MNTH_N = :yearMonth
-              AND ASM_BLDNG_V = :buildingName";
+        //        // Fetch distinct unit configurations for the selected building
+        //        string fetchUnitConfigurationsQuery = @"
+        //    SELECT DISTINCT ASM_UNT_CNFGRTN_V
+        //    FROM TBL_ASST_SLS_MS
+        //    WHERE ASM_PRJCT_NMBR_N = :projectNumber
+        //      AND ASM_YR_MNTH_N = :yearMonth
+        //      AND ASM_BLDNG_V = :buildingName";
 
-                List<string> unitConfigurations = new List<string>();
-                using (OracleConnection connection = new OracleConnection(_connectionString))
-                {
-                    connection.Open();
-                    using (OracleCommand command = new OracleCommand(fetchUnitConfigurationsQuery, connection))
-                    {
-                        command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
-                        command.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
-                        command.Parameters.Add(new OracleParameter("buildingName", buildingName));
+        //        List<string> unitConfigurations = new List<string>();
+        //        using (OracleConnection connection = new OracleConnection(_connectionString))
+        //        {
+        //            connection.Open();
+        //            using (OracleCommand command = new OracleCommand(fetchUnitConfigurationsQuery, connection))
+        //            {
+        //                command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+        //                command.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+        //                command.Parameters.Add(new OracleParameter("buildingName", buildingName));
 
-                        using (OracleDataReader reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                unitConfigurations.Add(reader["ASM_UNT_CNFGRTN_V"].ToString());
-                            }
-                        }
-                    }
-                }
+        //                using (OracleDataReader reader = command.ExecuteReader())
+        //                {
+        //                    while (reader.Read())
+        //                    {
+        //                        unitConfigurations.Add(reader["ASM_UNT_CNFGRTN_V"].ToString());
+        //                    }
+        //                }
+        //            }
+        //        }
 
-                // Fetch distinct customer names for the selected building
-                string fetchCustomerNamesQuery = @"
-            SELECT DISTINCT ASM_CSTMR_NM_V
-            FROM TBL_ASST_SLS_MS
-            WHERE ASM_PRJCT_NMBR_N = :projectNumber
-              AND ASM_YR_MNTH_N = :yearMonth
-              AND ASM_BLDNG_V = :buildingName";
+        //        // Fetch distinct customer names for the selected building
+        //        string fetchCustomerNamesQuery = @"
+        //    SELECT DISTINCT ASM_CSTMR_NM_V
+        //    FROM TBL_ASST_SLS_MS
+        //    WHERE ASM_PRJCT_NMBR_N = :projectNumber
+        //      AND ASM_YR_MNTH_N = :yearMonth
+        //      AND ASM_BLDNG_V = :buildingName";
 
-                List<string> customerNames = new List<string>();
-                using (OracleConnection connection = new OracleConnection(_connectionString))
-                {
-                    connection.Open();
-                    using (OracleCommand command = new OracleCommand(fetchCustomerNamesQuery, connection))
-                    {
-                        command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
-                        command.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
-                        command.Parameters.Add(new OracleParameter("buildingName", buildingName));
+        //        List<string> customerNames = new List<string>();
+        //        using (OracleConnection connection = new OracleConnection(_connectionString))
+        //        {
+        //            connection.Open();
+        //            using (OracleCommand command = new OracleCommand(fetchCustomerNamesQuery, connection))
+        //            {
+        //                command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+        //                command.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+        //                command.Parameters.Add(new OracleParameter("buildingName", buildingName));
 
-                        using (OracleDataReader reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                customerNames.Add(reader["ASM_CSTMR_NM_V"].ToString());
-                            }
-                        }
-                    }
-                }
+        //                using (OracleDataReader reader = command.ExecuteReader())
+        //                {
+        //                    while (reader.Read())
+        //                    {
+        //                        customerNames.Add(reader["ASM_CSTMR_NM_V"].ToString());
+        //                    }
+        //                }
+        //            }
+        //        }
 
-                return Request.CreateResponse(HttpStatusCode.OK, new { unitNumbers, unitConfigurations, customerNames });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching filters data: {ex.Message}");
-                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
-            }
-        }
+        //        return Request.CreateResponse(HttpStatusCode.OK, new { unitNumbers, unitConfigurations, customerNames });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"Error fetching filters data: {ex.Message}");
+        //        return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
+        //    }
+        //}
 
         [HttpPost]
-        [Route("api/assetsales/update/{projectNumber}/{yearMonth}/{buildingName}/{uniqueUnitNumber}")]
-        public HttpResponseMessage UpdateAssetSale([FromBody] newAssetSale updateModel)
+        [Route("api/assetsales/update/{projectNumber}/{yearMonth}/{buildingName}")]
+        public HttpResponseMessage UpdateAssetSales(string projectNumber, string yearMonth, string buildingName, [FromBody] List<AssetSale> assetSales)
         {
             try
             {
-                if (updateModel == null)
+                if (assetSales == null || !assetSales.Any())
                 {
                     return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Invalid data provided." });
                 }
 
-                string selectQuery = @"SELECT * FROM TBL_ASST_SLS_MS
-                                     WHERE ASM_PRJCT_NMBR_N = :projectNumber
-                                     AND ASM_YR_MNTH_N = :yearMonth
-                                     AND ASM_BLDNG_V = :buildingName
-                                     AND ASM_UNT_UNQ_NMBR_N = :UniqueUnitNumber";
-                string updateQuery = @"
-            UPDATE TBL_ASST_SLS_MS
-            SET
-                ASM_UNT_SLD_FLG_C = :SoldFlag,
-                ASM_UNT_RGSTRD_FLG_C = :RegisteredFlag,
-                ASM_UNT_RGSTRTN_DT_D = :RegistrationDate,
-                ASM_UNT_BKNG_DT_D = :BookingDate,
-                ASM_ALLTMNT_LTTR_DT_D = :AllotmentLetterDate,
-                ASM_UNT_AGRMNT_DT_D = :AgreementDate,
-                ASM_CSTMR_NM_V = :CustomerName,
-                ASM_CSTMR_KYC_AADHR_N = :CustomerKycAadhar,
-                ASM_CSTMR_KYC_PN_V = :CustomerKycPan,
-                ASM_CSTMR_KYC_MBL_V = :CustomerKycMobile,
-                ASM_CSTMR_KYC_EML_V = :CustomerKycEmail,
-                ASM_CSTMR_KYC_ADDRSS_V = :CustomerKycAddress,
-                ASM_NC_ISSD_FLG_C = :NcIssuedFlag,
-                ASM_NC_NMBR_V = :NcNumber,
-                ASM_SLS_BS_PRC_N = :SalesBasePrice,
-                ASM_SLS_STMP_DTY_AMNT_N = :SalesStampDutyAmount,
-                ASM_SLS_RGSTRN_AMNT_N = :SalesRegistrationAmount,
-                ASM_SLS_OC_AMNT_N = :SalesOtherCharges,
-                ASM_SLS_PSS_THRGH_CHRGS_N = :SalesPassThroughCharges,
-                ASM_SLS_TXS_AMNT_N = :SalesTaxesAmount,
-                ASM_SLS_TTL_AMNT_N = :SalesTotalAmount,
-                ASM_DMND_BS_PRC_N = :DemandBasePrice,
-                ASM_DMND_STMP_DTY_N = :DemandStampDuty,
-                ASM_DMND_RGSTRTN_AMNT_N = :DemandRegistrationAmount,
-                ASM_DMND_OC_AMNT_N = :DemandOtherCharges,
-                ASM_DMND_PSS_THRGH_CHRGS_N = :DemandPassThroughCharges,
-                ASM_DMND_TXS_AMNT_N = :DemandTaxesAmount,
-                ASM_DMND_TTL_AMNT_N = :DemandTotalAmount,
-                ASM_RCVD_BS_PRC_N = :ReceivedBasePrice,
-                ASM_RCVD_STMP_DTY_AMNT_N = :ReceivedStampDutyAmount,
-                ASM_RCVD_RGSTRN_AMNT_N = :ReceivedRegistrationAmount,
-                ASM_RCVD_OC_AMNT_N = :ReceivedOtherCharges,
-                ASM_RCVD_PSS_THRGH_CHRGS_N = :ReceivedPassThroughCharges,
-                ASM_RCVD_TXS_AMNT_N = :ReceivedTaxesAmount,
-                ASM_RCVD_TTL_AMNT_N = :ReceivedTotalAmount,
-                ASM_MD_OF_FNNC_C = :ModeOfFinance,
-                ASM_FI_NM_V = :FinancialInstitutionName,
-                ASM_PYMNT_PLN_NM_V = :PaymentPlanName,
-                ASM_SRC_OF_CSTMR_C = :SourceOfCustomer,
-                ASM_CHNNL_PRTNR_NM_V = :ChannelPartnerName,
-                ASM_CHNNL_PRTNR_MBL_V = :ChannelPartnerMobile,
-                ASM_CHNNL_PRTNR_EML_V = :ChannelPartnerEmail,
-                ASM_BRKRG_AMNT_N = :BrokerageAmount
-            WHERE ASM_PRJCT_NMBR_N = :projectNumber
-              AND ASM_YR_MNTH_N = :yearMonth
-              AND ASM_BLDNG_V = :buildingName
-              AND ASM_UNT_UNQ_NMBR_N = :UniqueUnitNumber";
-
-                using (OracleDataAdapter adapter = new OracleDataAdapter(selectQuery, _connectionString))
+                using (OracleConnection connection = new OracleConnection(_connectionString))
                 {
-                    adapter.SelectCommand.Parameters.Add(new OracleParameter("UniqueUnitNumber", updateModel.UniqueUnitNumber));
+                    connection.Open();
 
-                    DataSet dataSet = new DataSet();
-                    adapter.Fill(dataSet, "AssetSale");
 
-                    if (dataSet.Tables["AssetSale"] != null && dataSet.Tables["AssetSale"].Rows.Count > 0)
+
+                    int i = 0;
+                    foreach (var assetSale in assetSales)
                     {
-                        DataTable table = dataSet.Tables["AssetSale"];
-                        DataRow row = table.Rows[0];
+                        string sql = string.Format(AssetSalesQueries.UpdateAssetSalesMisRow,
+                            projectNumber,
+                            yearMonth,
+                            assetSale.UniqueUnitNumber,
+                            assetSale.SoldFlag,
+                            assetSale.RegisteredFlag,
+                            assetSale.RegistrationDate.HasValue ? "'" + assetSale.RegistrationDate.Value.ToString("dd-MMM-yyyy") + "'" : "null",
+                            assetSale.BookingDate.HasValue ? "'" + assetSale.BookingDate.Value.ToString("dd-MMM-yyyy") + "'" : "null",
+                            assetSale.AllotmentLetterDate.HasValue ? "'" + assetSale.AllotmentLetterDate.Value.ToString("dd-MMM-yyyy") + "'" : "null",
+                            assetSale.AgreementDate.HasValue ? "'" + assetSale.AgreementDate.Value.ToString("dd-MMM-yyyy") + "'" : "null",
+                            assetSale.CustomerName,
+                            assetSale.CustomerKycAadhar,
+                            assetSale.CustomerKycPan,
+                            assetSale.CustomerKycMobile,
+                            assetSale.CustomerKycEmail,
+                            assetSale.CustomerKycAddress,
+                            assetSale.NcIssuedFlag,
+                            assetSale.NcNumber,
+                            assetSale.SalesBasePrice,
+                            assetSale.SalesStampDutyAmount,
+                            assetSale.SalesRegistrationAmount,
+                            assetSale.SalesOtherCharges,
+                            assetSale.SalesPassThroughCharges,
+                            assetSale.SalesTaxesAmount,
+                            assetSale.SalesTotalAmount,
+                            assetSale.DemandBasePrice,
+                            assetSale.DemandStampDuty,
+                            assetSale.DemandRegistrationAmount,
+                            assetSale.DemandOtherCharges,
+                            assetSale.DemandPassThroughCharges,
+                            assetSale.DemandTaxesAmount,
+                            assetSale.DemandTotalAmount,
+                            assetSale.ReceivedBasePrice,
+                            assetSale.ReceivedStampDutyAmount,
+                            assetSale.ReceivedRegistrationAmount,
+                            assetSale.ReceivedOtherCharges,
+                            assetSale.ReceivedPassThroughCharges,
+                            assetSale.ReceivedTaxesAmount,
+                            assetSale.ReceivedTotalAmount,
+                            assetSale.ModeOfFinance,
+                            assetSale.FinancialInstitutionName,
+                            assetSale.PaymentPlanName,
+                            assetSale.SourceOfCustomer,
+                            assetSale.ChannelPartnerName,
+                            assetSale.ChannelPartnerMobile,
+                            assetSale.ChannelPartnerEmail,
+                            assetSale.BrokerageAmount);
 
-                        // Update the DataRow with values from updateModel
-                        row["ASM_UNT_SLD_FLG_C"] = updateModel.SoldFlag;
-                        row["ASM_UNT_RGSTRD_FLG_C"] = updateModel.RegisteredFlag;
-                        row["ASM_UNT_RGSTRTN_DT_D"] = updateModel.RegistrationDate ?? (object)DBNull.Value;
-                        row["ASM_UNT_BKNG_DT_D"] = updateModel.BookingDate ?? (object)DBNull.Value;
-                        row["ASM_ALLTMNT_LTTR_DT_D"] = updateModel.AllotmentLetterDate ?? (object)DBNull.Value;
-                        row["ASM_UNT_AGRMNT_DT_D"] = updateModel.AgreementDate ?? (object)DBNull.Value;
-                        row["ASM_CSTMR_NM_V"] = updateModel.CustomerName;
-                        row["ASM_CSTMR_KYC_AADHR_N"] = updateModel.CustomerKycAadhar;
-                        row["ASM_CSTMR_KYC_PN_V"] = updateModel.CustomerKycPan;
-                        row["ASM_CSTMR_KYC_MBL_V"] = updateModel.CustomerKycMobile;
-                        row["ASM_CSTMR_KYC_EML_V"] = updateModel.CustomerKycEmail;
-                        row["ASM_CSTMR_KYC_ADDRSS_V"] = updateModel.CustomerKycAddress;
-                        row["ASM_NC_ISSD_FLG_C"] = updateModel.NcIssuedFlag;
-                        row["ASM_NC_NMBR_V"] = updateModel.NcNumber;
-                        row["ASM_SLS_BS_PRC_N"] = updateModel.SalesBasePrice;
-                        row["ASM_SLS_STMP_DTY_AMNT_N"] = updateModel.SalesStampDutyAmount;
-                        row["ASM_SLS_RGSTRN_AMNT_N"] = updateModel.SalesRegistrationAmount;
-                        row["ASM_SLS_OC_AMNT_N"] = updateModel.SalesOtherCharges;
-                        row["ASM_SLS_PSS_THRGH_CHRGS_N"] = updateModel.SalesPassThroughCharges;
-                        row["ASM_SLS_TXS_AMNT_N"] = updateModel.SalesTaxesAmount;
-                        row["ASM_SLS_TTL_AMNT_N"] = updateModel.SalesTotalAmount;
-                        row["ASM_DMND_BS_PRC_N"] = updateModel.DemandBasePrice;
-                        row["ASM_DMND_STMP_DTY_N"] = updateModel.DemandStampDuty;
-                        row["ASM_DMND_RGSTRTN_AMNT_N"] = updateModel.DemandRegistrationAmount;
-                        row["ASM_DMND_OC_AMNT_N"] = updateModel.DemandOtherCharges;
-                        row["ASM_DMND_PSS_THRGH_CHRGS_N"] = updateModel.DemandPassThroughCharges;
-                        row["ASM_DMND_TXS_AMNT_N"] = updateModel.DemandTaxesAmount;
-                        row["ASM_DMND_TTL_AMNT_N"] = updateModel.DemandTotalAmount;
-                        row["ASM_RCVD_BS_PRC_N"] = updateModel.ReceivedBasePrice;
-                        row["ASM_RCVD_STMP_DTY_AMNT_N"] = updateModel.ReceivedStampDutyAmount;
-                        row["ASM_RCVD_RGSTRN_AMNT_N"] = updateModel.ReceivedRegistrationAmount;
-                        row["ASM_RCVD_OC_AMNT_N"] = updateModel.ReceivedOtherCharges;
-                        row["ASM_RCVD_PSS_THRGH_CHRGS_N"] = updateModel.ReceivedPassThroughCharges;
-                        row["ASM_RCVD_TXS_AMNT_N"] = updateModel.ReceivedTaxesAmount;
-                        row["ASM_RCVD_TTL_AMNT_N"] = updateModel.ReceivedTotalAmount;
-                        row["ASM_MD_OF_FNNC_C"] = updateModel.ModeOfFinance;
-                        row["ASM_FI_NM_V"] = updateModel.FinancialInstitutionName;
-                        row["ASM_PYMNT_PLN_NM_V"] = updateModel.PaymentPlanName;
-                        row["ASM_SRC_OF_CSTMR_C"] = updateModel.SourceOfCustomer;
-                        row["ASM_CHNNL_PRTNR_NM_V"] = updateModel.ChannelPartnerName;
-                        row["ASM_CHNNL_PRTNR_MBL_V"] = updateModel.ChannelPartnerMobile;
-                        row["ASM_CHNNL_PRTNR_EML_V"] = updateModel.ChannelPartnerEmail;
-                        row["ASM_BRKRG_AMNT_N"] = updateModel.BrokerageAmount;
-
-                        // Configure the UpdateCommand - Important: Do this only once per adapter if possible for better performance
-                        adapter.UpdateCommand = new OracleCommand(updateQuery, adapter.SelectCommand.Connection);
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SoldFlag", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_UNT_SLD_FLG_C", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("RegisteredFlag", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_UNT_RGSTRD_FLG_C", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("RegistrationDate", OracleDbType.Date, 0, ParameterDirection.Input, true, 0, 0, "ASM_UNT_RGSTRTN_DT_D", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("BookingDate", OracleDbType.Date, 0, ParameterDirection.Input, true, 0, 0, "ASM_UNT_BKNG_DT_D", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("AllotmentLetterDate", OracleDbType.Date, 0, ParameterDirection.Input, true, 0, 0, "ASM_ALLTMNT_LTTR_DT_D", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("AgreementDate", OracleDbType.Date, 0, ParameterDirection.Input, true, 0, 0, "ASM_UNT_AGRMNT_DT_D", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("CustomerName", OracleDbType.Varchar2, 255, ParameterDirection.Input, true, 0, 0, "ASM_CSTMR_NM_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("CustomerKycAadhar", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_CSTMR_KYC_AADHR_N", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("CustomerKycPan", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_CSTMR_KYC_PN_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("CustomerKycMobile", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_CSTMR_KYC_MBL_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("CustomerKycEmail", OracleDbType.Varchar2, 255, ParameterDirection.Input, true, 0, 0, "ASM_CSTMR_KYC_EML_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("CustomerKycAddress", OracleDbType.Varchar2, 255, ParameterDirection.Input, true, 0, 0, "ASM_CSTMR_KYC_ADDRSS_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("NcIssuedFlag", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_NC_ISSD_FLG_C", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("NcNumber", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_NC_NMBR_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SalesBasePrice", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_SLS_BS_PRC_N", DataRowVersion.Current, DBNull.Value)); // Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SalesStampDutyAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_SLS_STMP_DTY_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SalesRegistrationAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_SLS_RGSTRN_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SalesOtherCharges", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_SLS_OC_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SalesPassThroughCharges", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_SLS_PSS_THRGH_CHRGS_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SalesTaxesAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_SLS_TXS_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SalesTotalAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_SLS_TTL_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("DemandBasePrice", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_DMND_BS_PRC_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("DemandStampDuty", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_DMND_STMP_DTY_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("DemandRegistrationAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_DMND_RGSTRTN_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("DemandOtherCharges", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_DMND_OC_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("DemandPassThroughCharges", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_DMND_PSS_THRGH_CHRGS_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("DemandTaxesAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_DMND_TXS_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("DemandTotalAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_DMND_TTL_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ReceivedBasePrice", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_RCVD_BS_PRC_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ReceivedStampDutyAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_RCVD_STMP_DTY_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ReceivedRegistrationAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_RCVD_RGSTRN_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ReceivedOtherCharges", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_RCVD_OC_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ReceivedPassThroughCharges", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_RCVD_PSS_THRGH_CHRGS_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ReceivedTaxesAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_RCVD_TXS_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ReceivedTotalAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_RCVD_TTL_AMNT_N", DataRowVersion.Current, DBNull.Value)); // Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ModeOfFinance", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_MD_OF_FNNC_C", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("FinancialInstitutionName", OracleDbType.Varchar2, 255, ParameterDirection.Input, true, 0, 0, "ASM_FI_NM_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("PaymentPlanName", OracleDbType.Varchar2, 255, ParameterDirection.Input, true, 0, 0, "ASM_PYMNT_PLN_NM_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("SourceOfCustomer", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_SRC_OF_CSTMR_C", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ChannelPartnerName", OracleDbType.Varchar2, 255, ParameterDirection.Input, true, 0, 0, "ASM_CHNNL_PRTNR_NM_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ChannelPartnerMobile", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_CHNNL_PRTNR_MBL_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("ChannelPartnerEmail", OracleDbType.Varchar2, 255, ParameterDirection.Input, true, 0, 0, "ASM_CHNNL_PRTNR_EML_V", DataRowVersion.Current, DBNull.Value));
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("BrokerageAmount", OracleDbType.Decimal, 0, ParameterDirection.Input, true, 10, 2, "ASM_BRKRG_AMNT_N", DataRowVersion.Current, DBNull.Value));// Added precision and scale
-                        adapter.UpdateCommand.Parameters.Add(new OracleParameter("UniqueUnitNumber", OracleDbType.Varchar2, 50, ParameterDirection.Input, true, 0, 0, "ASM_UNT_UNQ_NMBR_N", DataRowVersion.Current, DBNull.Value));
-
-                        OracleCommandBuilder builder = new OracleCommandBuilder(adapter);
-                        int rowsAffected = adapter.Update(dataSet, "AssetSale");
-
-                        if (rowsAffected > 0)
+                        OracleCommand command = new OracleCommand(sql, connection);
+                        // Execute the update command
+                        int rowsAffected = command.ExecuteNonQuery();
+                        ++i;
+                        if (rowsAffected == 0)
                         {
-                            return Request.CreateResponse(HttpStatusCode.OK, new { message = "Asset sale updated successfully." });
-                        }
-                        else
-                        {
-                            return Request.CreateResponse(HttpStatusCode.NotFound, new { error = "Asset sale not found or no updates were made." });
+                            return Request.CreateResponse(HttpStatusCode.NotFound, new { error = $"Asset sale with UniqueUnitNumber {assetSale.UniqueUnitNumber} not found or no updates were made." });
                         }
                     }
+
                 }
+
+                return Request.CreateResponse(HttpStatusCode.OK, new { message = "All asset sales updated successfully." });
             }
             catch (Exception ex)
             {
                 // Log the error to the server console
-                Console.WriteLine($"Error updating asset sale: {ex.Message}");
+                Console.WriteLine($"Error updating asset sales: {ex.Message}");
                 return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
             }
-            // Add this return statement to ensure all code paths return a value
-            return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = "An unexpected error occurred." });
         }
+
     }
 }

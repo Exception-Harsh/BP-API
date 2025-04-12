@@ -9,7 +9,7 @@ namespace BP_API
         public static void Register(HttpConfiguration config)
         {
             // Enable CORS for your API
-            var cors = new EnableCorsAttribute("http://localhost:5173", "*", "*");
+            var cors = new EnableCorsAttribute("*", "*", "*");
             config.EnableCors(cors);
 
             // Web API routes
