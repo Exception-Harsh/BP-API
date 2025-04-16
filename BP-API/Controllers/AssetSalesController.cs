@@ -518,5 +518,250 @@ namespace BP_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Route("api/assetsales/workflow/{projectNumber}/{yearMonth}/{role}")]
+        public HttpResponseMessage ApprovalWorkflow(string projectNumber, string yearMonth, string role, [FromBody] ApprovalWorkflow request)
+        {
+            try
+            {
+                int incrmntUnqNum = 0;
+
+                using (OracleConnection connection = new OracleConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    // Get next unique number
+                    using (OracleCommand cmd1 = new OracleCommand(@"
+                SELECT NVL(MAX(ASMAW_UNQ_NMBR_N), 0) + 1 
+                FROM TBL_ASST_SLS_MS_APPRVL_WRKFLW", connection))
+                    {
+                        var result = cmd1.ExecuteScalar();
+                        incrmntUnqNum = Convert.ToInt32(result);
+                    }
+
+                    string insertQuery = @"
+                INSERT INTO TBL_ASST_SLS_MS_APPRVL_WRKFLW
+                (
+                    ASMAW_YR_MNTH_N, ASMAW_PRJCT_NMBR_N, ASMAW_UNQ_NMBR_N,
+                    ASMAW_USR_NM_V, ASMAW_STTS_FLG_C, ASMAW_CMMNTS_V,
+                    COIN_CRTN_USR_ID_V, COIN_CRTN_DT_D,
+                    COIN_LST_MDFD_USR_ID_V, COIN_LST_MDFD_DT_D
+                )
+                VALUES (
+                    :yearMonth, :projectNumber, :incrmntUnqNum,
+                    :role, :statusFlag, :workflowComment,
+                    :createdBy, :createdDate,
+                    :modifiedBy, :modifiedDate
+                )";
+
+                    using (OracleCommand command = new OracleCommand(insertQuery, connection))
+                    {
+                        // Common parameters
+                        command.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+                        command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        command.Parameters.Add(new OracleParameter("incrmntUnqNum", incrmntUnqNum));
+                        command.Parameters.Add(new OracleParameter("role", role));
+
+                        string statusFlag = request?.StatusFlag ?? "0";
+                        string workflowComment = request?.WorkflowComment ?? "";
+                        string username = request?.Username;
+                        if (string.IsNullOrEmpty(username))
+                        {
+                            return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Username is required." });
+                        }
+
+                        if (role == "PME" || role == "Arbour")
+                        {
+                            if (request == null || string.IsNullOrEmpty(request.StatusFlag))
+                                return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "StatusFlag is required for PME or Arbour roles." });
+
+                            statusFlag = request.StatusFlag;
+                            workflowComment = request.WorkflowComment ?? "";
+                        }
+
+                        command.Parameters.Add(new OracleParameter("statusFlag", statusFlag));
+                        command.Parameters.Add(new OracleParameter("workflowComment", workflowComment));
+
+                        // Audit info using username from request
+                        command.Parameters.Add(new OracleParameter("createdBy", username));
+                        command.Parameters.Add(new OracleParameter("createdDate", DateTime.Now));
+                        command.Parameters.Add(new OracleParameter("modifiedBy", username));
+                        command.Parameters.Add(new OracleParameter("modifiedDate", DateTime.Now));
+
+                        int rowsInserted = command.ExecuteNonQuery();
+                        if (rowsInserted == 0)
+                        {
+                            return Request.CreateResponse(HttpStatusCode.NotFound, new { error = "No rows were inserted." });
+                        }
+                    }
+                }
+
+                return Request.CreateResponse(HttpStatusCode.OK, new { message = "Workflow saved successfully." });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [Route("api/assetsales/hdr/{projectNumber}/{yearMonth}")]
+        public HttpResponseMessage InsertHeader(string projectNumber, string yearMonth, [FromBody] ProjectHeader request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Request body cannot be null." });
+                }
+
+                if (string.IsNullOrEmpty(request.UserName))
+                {
+                    return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Username is required." });
+                }
+
+                using (OracleConnection connection = new OracleConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    // Check if a row with the same projectNumber and yearMonth already exists
+                    string checkQuery = @"
+                        SELECT COUNT(*)
+                        FROM tbl_asst_sls_ms_hdr
+                        WHERE ASMH_PRJCT_NMBR_N = :projectNumber AND ASMH_YR_MNTH_N = :yearMonth";
+
+                    using (OracleCommand checkCmd = new OracleCommand(checkQuery, connection))
+                    {
+                        checkCmd.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        checkCmd.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+
+                        int count = Convert.ToInt32(checkCmd.ExecuteScalar());
+
+                        if (count > 0)
+                        {
+                            return Request.CreateResponse(HttpStatusCode.Conflict, new { error = "A row with the same projectNumber and yearMonth already exists." });
+                        }
+                    }
+
+                    // Insert the new row
+                    string insertQuery = @"
+                        INSERT INTO tbl_asst_sls_ms_hdr (
+                            ASMH_YR_MNTH_N, ASMH_PRJCT_NMBR_N, ASMH_APPRVL_FLG_C,
+                            ASMH_HS_ERRRS_C, ASMH_RMRKS_V, COIN_CRTN_USR_ID_V,
+                            COIN_CRTN_DT_D, COIN_LST_MDFD_USR_ID_V, COIN_LST_MDFD_DT_D
+                        ) VALUES (
+                            :yearMonth, :projectNumber, 'N',
+                            'N', :remarks, :userName,
+                            SYSDATE, :userName, SYSDATE
+                        )";
+
+                    using (OracleCommand insertCmd = new OracleCommand(insertQuery, connection))
+                    {
+                        insertCmd.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+                        insertCmd.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        insertCmd.Parameters.Add(new OracleParameter("remarks", (object)request.Remarks ?? DBNull.Value));
+                        insertCmd.Parameters.Add(new OracleParameter("userName", request.UserName));
+
+                        int rowsInserted = insertCmd.ExecuteNonQuery();
+                        if (rowsInserted == 0)
+                        {
+                            return Request.CreateResponse(HttpStatusCode.NotFound, new { error = "No rows were inserted." });
+                        }
+                    }
+                }
+
+                return Request.CreateResponse(HttpStatusCode.OK, new { message = "Header row inserted successfully." });
+            }
+            catch (OracleException oracleEx)
+            {
+                // Handle Oracle-specific exceptions
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = oracleEx.Message });
+            }
+            catch (Exception ex)
+            {
+                // Handle general exceptions
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [Route("api/assetsales/updatehdr/{projectNumber}/{yearMonth}")]
+        public HttpResponseMessage UpdateApprovalFlag(string projectNumber, string yearMonth, [FromBody] ProjectHeader request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Request body cannot be null." });
+                }
+
+                if (string.IsNullOrEmpty(request.UserName))
+                {
+                    return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Username is required." });
+                }
+
+                using (OracleConnection connection = new OracleConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    // Check the approval status
+                    string checkStatusQuery = @"
+                SELECT asmaw_stts_flg_c
+                FROM TBL_ASST_SLS_MS_APPRVL_WRKFLW
+                WHERE asmaw_prjct_nmbr_n = :projectNumber
+                AND asmaw_yr_mnth_n = :yearMonth
+                AND asmaw_usr_nm_v = :userName";
+
+                    using (OracleCommand checkStatusCmd = new OracleCommand(checkStatusQuery, connection))
+                    {
+                        checkStatusCmd.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        checkStatusCmd.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+                        checkStatusCmd.Parameters.Add(new OracleParameter("userName", request.UserName));
+
+                        string status = checkStatusCmd.ExecuteScalar()?.ToString();
+
+                        if (status != "A")
+                        {
+                            return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Approval status is not 'A'." });
+                        }
+                    }
+
+                    // Update the approval flag
+                    string updateQuery = @"
+                UPDATE tbl_asst_sls_ms_hdr
+                SET ASMH_APPRVL_FLG_C = 'Y',
+                    COIN_LST_MDFD_USR_ID_V = :userName,
+                    COIN_LST_MDFD_DT_D = SYSDATE
+                WHERE ASMH_PRJCT_NMBR_N = :projectNumber
+                AND ASMH_YR_MNTH_N = :yearMonth";
+
+                    using (OracleCommand updateCmd = new OracleCommand(updateQuery, connection))
+                    {
+                        updateCmd.Parameters.Add(new OracleParameter("userName", request.UserName));
+                        updateCmd.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        updateCmd.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+
+                        int rowsUpdated = updateCmd.ExecuteNonQuery();
+                        if (rowsUpdated == 0)
+                        {
+                            return Request.CreateResponse(HttpStatusCode.NotFound, new { error = "No rows were updated." });
+                        }
+                    }
+                }
+
+                return Request.CreateResponse(HttpStatusCode.OK, new { message = "Approval flag updated successfully." });
+            }
+            catch (OracleException oracleEx)
+            {
+                // Handle Oracle-specific exceptions
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = oracleEx.Message });
+            }
+            catch (Exception ex)
+            {
+                // Handle general exceptions
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
+            }
+        }
     }
 }
