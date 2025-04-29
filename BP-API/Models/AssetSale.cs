@@ -6,7 +6,7 @@ namespace BP_API.Models
     {
         public string YearMonth { get; set; }
         public string ProjectNumber { get; set; }
-        public string AssetNumber { get; set; }
+        public int AssetNumber { get; set; }
         public string Phase { get; set; }
         public string Building { get; set; }
         public string Floor { get; set; }
