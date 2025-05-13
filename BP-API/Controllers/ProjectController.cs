@@ -28,14 +28,14 @@ namespace BP_API.Controllers
 
                     if (role.Equals("Arbour", StringComparison.OrdinalIgnoreCase))
                     {
-                        sql = "SELECT PH_PRJCT_NM_V, PH_PRJCT_NMBR_N, PH_TTL_IRR_N, PH_BRRWR_IRR_N FROM TBL_PRJCT_HDR WHERE PH_STTS_C = 'A'";
+                        sql = "SELECT PH_PRJCT_NM_V, PH_PRJCT_NMBR_N, PH_TTL_IRR_N, PH_BRRWR_IRR_N, PH_MSP_APPCL_ON_C FROM TBL_PRJCT_HDR WHERE PH_STTS_C = 'A'";
                     }
                     else if (role.Equals("Borrower", StringComparison.OrdinalIgnoreCase))
                     {
                         if (string.IsNullOrEmpty(code))
                             return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Code is required for Borrower role" });
 
-                        sql = "SELECT PH_PRJCT_NM_V, PH_PRJCT_NMBR_N, PH_TTL_IRR_N, PH_BRRWR_IRR_N FROM TBL_PRJCT_HDR WHERE PH_BRRWR_CD_C = :code AND PH_STTS_C = 'A'";
+                        sql = "SELECT PH_PRJCT_NM_V, PH_PRJCT_NMBR_N, PH_TTL_IRR_N, PH_BRRWR_IRR_N, PH_MSP_APPCL_ON_C FROM TBL_PRJCT_HDR WHERE PH_BRRWR_CD_C = :code AND PH_STTS_C = 'A'";
                         command.Parameters.Add(new OracleParameter(":code", OracleDbType.Varchar2)).Value = code;
                     }
                     else if (role.Equals("Trustee", StringComparison.OrdinalIgnoreCase))
@@ -43,7 +43,7 @@ namespace BP_API.Controllers
                         if (string.IsNullOrEmpty(code))
                             return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Code is required for Trustee role" });
 
-                        sql = "SELECT PH_PRJCT_NM_V, PH_PRJCT_NMBR_N, PH_TTL_IRR_N, PH_BRRWR_IRR_N FROM TBL_PRJCT_HDR WHERE PH_TRST_CD_C = :code AND PH_STTS_C = 'A'";
+                        sql = "SELECT PH_PRJCT_NM_V, PH_PRJCT_NMBR_N, PH_TTL_IRR_N, PH_BRRWR_IRR_N, PH_MSP_APPCL_ON_C FROM TBL_PRJCT_HDR WHERE PH_TRST_CD_C = :code AND PH_STTS_C = 'A'";
                         command.Parameters.Add(new OracleParameter(":code", OracleDbType.Varchar2)).Value = code;
                     }
                     else if (role.Equals("PME", StringComparison.OrdinalIgnoreCase))
@@ -51,7 +51,7 @@ namespace BP_API.Controllers
                         if (string.IsNullOrEmpty(code))
                             return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Code is required for PME role" });
 
-                        sql = "SELECT PH_PRJCT_NM_V, PH_PRJCT_NMBR_N, PH_TTL_IRR_N, PH_BRRWR_IRR_N FROM TBL_PRJCT_HDR WHERE PH_PME_CD_C = :code AND PH_STTS_C = 'A'";
+                        sql = "SELECT PH_PRJCT_NM_V, PH_PRJCT_NMBR_N, PH_TTL_IRR_N, PH_BRRWR_IRR_N, PH_MSP_APPCL_ON_C FROM TBL_PRJCT_HDR WHERE PH_PME_CD_C = :code AND PH_STTS_C = 'A'";
                         command.Parameters.Add(new OracleParameter(":code", OracleDbType.Varchar2)).Value = code;
                     }
                     else

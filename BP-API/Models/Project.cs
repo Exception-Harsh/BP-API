@@ -7,6 +7,7 @@ public class Project
     public string ProjectNumber { get; set; }
     public decimal TotalIRR { get; set; }
     public decimal BorrowerIRR { get; set; }
+    public string MspApplicable { get; set; }
 
     public Project()
     {
@@ -19,5 +20,6 @@ public class Project
         ProjectNumber = row["PH_PRJCT_NMBR_N"].ToString();
         TotalIRR = Convert.ToDecimal(row["PH_TTL_IRR_N"]);
         BorrowerIRR = Convert.ToDecimal(row["PH_BRRWR_IRR_N"]);
+        MspApplicable = row["PH_MSP_APPCL_ON_C"].ToString();
     }
 }

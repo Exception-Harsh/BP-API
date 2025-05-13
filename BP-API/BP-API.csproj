@@ -119,11 +119,15 @@
     <Compile Include="Models\ApprovalWorkflow.cs" />
     <Compile Include="Models\AssetSale.cs" />
     <Compile Include="Models\Buildings.cs" />
+    <Compile Include="Models\DpBankAccount.cs" />
+    <Compile Include="Models\DrApprovalWorkflow.cs" />
     <Compile Include="Models\FileUpload.cs" />
     <Compile Include="Models\LoginRequest.cs" />
+    <Compile Include="Models\MaxFdsbNumberResponse.cs" />
     <Compile Include="Models\newAssetSale.cs" />
     <Compile Include="Models\NewDisbursementRequest.cs" />
     <Compile Include="Models\Project.cs" />
+    <Compile Include="Models\ProjectAssetBankAccount.cs" />
     <Compile Include="Models\ProjectHeader.cs" />
     <Compile Include="Models\UserCheckResult.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

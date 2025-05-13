@@ -120,5 +120,207 @@ namespace BP_API.Controllers
                 return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
             }
         }
+
+        [HttpGet]
+        [Route("api/filestorage/max-fdsb-number")]
+        public HttpResponseMessage GetMaxFdsbNumber()
+        {
+            try
+            {
+                int maxNumber;
+
+                using (OracleConnection connection = new OracleConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    string query = "SELECT MAX(FDSB_NMBR_N) FROM TBL_FL_DT_STRG_BLB";
+                    using (OracleCommand command = new OracleCommand(query, connection))
+                    {
+                        object result = command.ExecuteScalar();
+                        maxNumber = result == DBNull.Value ? 0 : Convert.ToInt32(result);
+                    }
+                }
+
+                return Request.CreateResponse(HttpStatusCode.OK, new { maxFdsbNumber = maxNumber });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching max FDSB_NMBR_N: {ex.Message}");
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        [Route ("api/borrowerAccountNumber/{projectNumber}/{assetNumber}")]
+        public IHttpActionResult AccountNumber(string projectNumber, string assetNumber)
+        {
+            List<ProjectAssetBankAccount> accounts = new List<ProjectAssetBankAccount>();
+
+            using (OracleConnection connection = new OracleConnection(_connectionString))
+            {
+                string query = "SELECT PABA_ACCNT_NMMBR_V FROM tbl_prjct_asst_bnk_accnts WHERE paba_prjct_nmbr_n = :projectNumber AND paba_asst_nmbr_n = :assetNumber";
+
+                OracleCommand command = new OracleCommand(query, connection);
+                command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                command.Parameters.Add(new OracleParameter("assetNumber", assetNumber));
+
+                try
+                {
+                    connection.Open();
+                    OracleDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        ProjectAssetBankAccount account = new ProjectAssetBankAccount
+                        {
+                            AccountNumber = reader["PABA_ACCNT_NMMBR_V"].ToString()
+                        };
+                        accounts.Add(account);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return InternalServerError(ex);
+                }
+            }
+
+            if (accounts.Count == 0)
+            {
+                return NotFound();
+            }
+
+            return Ok(accounts);
+        }
+
+        [HttpGet]
+        [Route("api/dpaccountnum/{projectNumber}")]
+        public IHttpActionResult AccountNumber(string projectNumber)
+        {
+            List<ProjectAssetBankAccount> accounts = new List<ProjectAssetBankAccount>();
+
+            using (OracleConnection connection = new OracleConnection(_connectionString))
+            {
+                string query = "SELECT PH_DP_ACCNT_NMMBR_V FROM tbl_prjct_hdr WHERE PH_DP_ACCNT_NMMBR_V != '-' AND PH_PRJCT_NMBR_N = :projectNumber";
+
+                OracleCommand command = new OracleCommand(query, connection);
+                command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+
+                try
+                {
+                    connection.Open();
+                    OracleDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        ProjectAssetBankAccount account = new ProjectAssetBankAccount
+                        {
+                            AccountNumber = reader["PH_DP_ACCNT_NMMBR_V"].ToString()
+                        };
+                        accounts.Add(account);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return InternalServerError(ex);
+                }
+            }
+
+            if (accounts.Count == 0)
+            {
+                return NotFound();
+            }
+
+            return Ok(accounts);
+        }
+
+        [HttpPost]
+        [Route("api/projectassetdrawing/workflow/{projectNumber}/{yearMonth}/{role}")]
+        public HttpResponseMessage ProjectAssetDrawingApprovalWorkflow(string projectNumber, string yearMonth, string role, [FromBody] DrApprovalWorkflow request)
+        {
+            try
+            {
+                int incrmntUnqNum = 0;
+
+                using (OracleConnection connection = new OracleConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    // Get next unique number
+                    using (OracleCommand cmd1 = new OracleCommand(@"
+                SELECT NVL(MAX(PADAW_UNQ_NMBR_N), 0) + 1
+                FROM TBL_PRJ_ASST_DR_APPRVL_WRKFLW", connection))
+                    {
+                        var result = cmd1.ExecuteScalar();
+                        incrmntUnqNum = Convert.ToInt32(result);
+                    }
+
+                    string insertQuery = @"
+                INSERT INTO TBL_PRJ_ASST_DR_APPRVL_WRKFLW
+                (
+                    PADAW_DR_NMBR_N, PADAW_YR_MNTH_N, PADAW_PRJCT_NMBR_N, PADAW_UNQ_NMBR_N,
+                    PADAW_USR_NM_V, PADAW_STTS_FLG_C, PADAW_CMMNTS_V,
+                    COIN_CRTN_USR_ID_V, COIN_CRTN_DT_D,
+                    COIN_LST_MDFD_USR_ID_V, COIN_LST_MDFD_DT_D
+                )
+                VALUES (
+                    :disbursementNumber, :yearMonth, :projectNumber, :incrmntUnqNum,
+                    :role, :statusFlag, :workflowComment,
+                    :createdBy, :createdDate,
+                    :modifiedBy, :modifiedDate
+                )";
+
+                    using (OracleCommand command = new OracleCommand(insertQuery, connection))
+                    {
+                        // Common parameters
+                        command.Parameters.Add(new OracleParameter("disbursementNumber", request.DisbursementNumber)); // Assuming DrawingNumber is part of the request
+                        command.Parameters.Add(new OracleParameter("yearMonth", yearMonth));
+                        command.Parameters.Add(new OracleParameter("projectNumber", projectNumber));
+                        command.Parameters.Add(new OracleParameter("incrmntUnqNum", incrmntUnqNum));
+                        command.Parameters.Add(new OracleParameter("role", role));
+
+                        string statusFlag = request?.StatusFlag ?? "0";
+                        string workflowComment = request?.WorkflowComment ?? "";
+                        string username = request?.Username;
+                        if (string.IsNullOrEmpty(username))
+                        {
+                            return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "Username is required." });
+                        }
+
+                        if (role == "PME" || role == "Arbour")
+                        {
+                            if (request == null || string.IsNullOrEmpty(request.StatusFlag))
+                                return Request.CreateResponse(HttpStatusCode.BadRequest, new { error = "StatusFlag is required for PME or Arbour roles." });
+
+                            statusFlag = request.StatusFlag;
+                            workflowComment = request.WorkflowComment ?? "";
+                        }
+
+                        command.Parameters.Add(new OracleParameter("statusFlag", statusFlag));
+                        command.Parameters.Add(new OracleParameter("workflowComment", workflowComment));
+
+                        // Audit info using username from request
+                        command.Parameters.Add(new OracleParameter("createdBy", username));
+                        command.Parameters.Add(new OracleParameter("createdDate", DateTime.Now));
+                        command.Parameters.Add(new OracleParameter("modifiedBy", username));
+                        command.Parameters.Add(new OracleParameter("modifiedDate", DateTime.Now));
+
+                        int rowsInserted = command.ExecuteNonQuery();
+                        if (rowsInserted == 0)
+                        {
+                            return Request.CreateResponse(HttpStatusCode.NotFound, new { error = "No rows were inserted." });
+                        }
+                    }
+                }
+
+                return Request.CreateResponse(HttpStatusCode.OK, new { message = "Project Asset Drawing Workflow saved successfully." });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, new { error = ex.Message });
+            }
+        }
+
+
     }
 }
