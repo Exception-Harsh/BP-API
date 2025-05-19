@@ -8,5 +8,6 @@ namespace BP_API.Models
     public class ProjectAssetBankAccount
     {
         public string AccountNumber { get; set; }
+        public string AccountType { get; set; }
     }
 }

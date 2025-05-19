@@ -121,6 +121,7 @@
     <Compile Include="Models\Buildings.cs" />
     <Compile Include="Models\DpBankAccount.cs" />
     <Compile Include="Models\DrApprovalWorkflow.cs" />
+    <Compile Include="Models\FileStorage.cs" />
     <Compile Include="Models\FileUpload.cs" />
     <Compile Include="Models\LoginRequest.cs" />
     <Compile Include="Models\MaxFdsbNumberResponse.cs" />
